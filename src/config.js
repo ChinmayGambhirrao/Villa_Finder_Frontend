@@ -1,7 +1,5 @@
 const config = {
-  apiUrl:
-    process.env.REACT_APP_API_URL ||
-    "https://villa-finder-backend.onrender.com",
+  apiUrl: "https://villa-finder-backend.onrender.com",
   // Add other configuration variables here
 };
 

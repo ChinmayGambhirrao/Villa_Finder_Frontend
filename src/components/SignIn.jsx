@@ -15,18 +15,40 @@ const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
 
     try {
       const endpoint = isSignUp ? "register" : "login";
-      const response = await fetch(`${config.apiUrl}/api/users/${endpoint}`, {
+      const url = `${config.apiUrl}/api/users/${endpoint}`;
+
+      // Log the request details
+      console.log("Making request to:", url);
+      console.log("With data:", { email, password });
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      // Log response details
+      console.log("Response status:", response.status);
+      console.log("Response headers:", Object.fromEntries(response.headers));
 
       if (!response.ok) {
-        throw new Error(data.message || "Authentication failed");
+        if (response.status === 404) {
+          throw new Error("Backend service not found. Please try again later.");
+        }
+        const errorData = await response.text();
+        console.error("Error response:", errorData);
+        throw new Error(
+          "Authentication failed. Please check your credentials and try again."
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data || !data.token) {
+        throw new Error("Invalid response from server");
       }
 
       // Store the token
@@ -36,7 +58,10 @@ const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
       onSignIn(data);
       onClose();
     } catch (err) {
-      setError(err.message || "Invalid email or password");
+      console.error("Authentication error:", err);
+      setError(
+        err.message || "Failed to connect to the server. Please try again."
+      );
     } finally {
       setLoading(false);
     }
