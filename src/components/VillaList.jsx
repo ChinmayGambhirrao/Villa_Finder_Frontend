@@ -3,6 +3,7 @@ import axios from "axios";
 import SignIn from "./SignIn";
 import VillaDetails from "./VillaDetails";
 import BookingForm from "./BookingForm";
+import config from "../config";
 
 const VillaList = ({
   isLoggedIn,
@@ -27,34 +28,27 @@ const VillaList = ({
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingConfirmed, setBookingConfirmed] = useState(null);
 
-  const fetchVillas = useCallback(async () => {
+  const fetchVillas = async () => {
+    setError("");
+    setInitialLoad(true);
     try {
-      setLoading(true);
-      const queryParams = new URLSearchParams();
-      if (searchFilters.location)
-        queryParams.append("location", searchFilters.location);
-      if (searchFilters.minPrice)
-        queryParams.append("minPrice", searchFilters.minPrice);
-      if (searchFilters.maxPrice)
-        queryParams.append("maxPrice", searchFilters.maxPrice);
-
-      const response = await axios.get(
-        `http://localhost:5001/api/villas?${queryParams}`
-      );
-      setVillas(response.data);
-      setError(null);
-    } catch (err) {
-      setError("Failed to fetch villas");
-      console.error("Error fetching villas:", err);
+      const response = await fetch(`${config.apiUrl}/api/villas`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch villas");
+      }
+      const data = await response.json();
+      setVillas(data);
+    } catch (error) {
+      console.error("Error fetching villas:", error);
+      setError("Failed to fetch villas. Please try again later.");
     } finally {
-      setLoading(false);
       setInitialLoad(false);
     }
-  }, [searchFilters]);
+  };
 
   useEffect(() => {
     fetchVillas();
-  }, [fetchVillas]);
+  }, []);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
