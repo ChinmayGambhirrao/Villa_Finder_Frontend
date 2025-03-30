@@ -1,4 +1,5 @@
 import { useState } from "react";
+import config from "../config";
 
 const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
   const [email, setEmail] = useState("");
@@ -13,11 +14,29 @@ const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
     setLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      onSignIn();
+      const endpoint = isSignUp ? "register" : "login";
+      const response = await fetch(`${config.apiUrl}/api/users/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Authentication failed");
+      }
+
+      // Store the token
+      localStorage.setItem("userToken", data.token);
+
+      // Call onSignIn with user data
+      onSignIn(data);
+      onClose();
     } catch (err) {
-      setError("Invalid email or password");
+      setError(err.message || "Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -36,7 +55,11 @@ const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
       // Here you would typically send the Google token to your backend
       // For now, we'll just simulate a successful sign-in
       console.log("Google Sign-In successful:", profile.getName());
-      onSignIn();
+      onSignIn({
+        email: profile.getEmail(),
+        name: profile.getName(),
+      });
+      onClose();
     } catch (err) {
       setError("Google Sign-In failed. Please try again.");
       console.error("Google Sign-In error:", err);
@@ -139,16 +162,55 @@ const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
           >
             {loading
-              ? "Signing in..."
+              ? "Please wait..."
               : isSignUp
               ? "Create Account"
               : "Sign In"}
           </button>
         </form>
 
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span
+                className={`px-2 ${
+                  darkMode
+                    ? "bg-gray-800 text-gray-400"
+                    : "bg-white text-gray-500"
+                }`}
+              >
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              <svg
+                className="w-5 h-5 mr-2"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
+              </svg>
+              Sign in with Google
+            </button>
+          </div>
+        </div>
+
         <div className="mt-6 text-center">
           <button
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError("");
+            }}
             className={`text-sm ${
               darkMode ? "text-blue-400" : "text-blue-600"
             } hover:underline`}
