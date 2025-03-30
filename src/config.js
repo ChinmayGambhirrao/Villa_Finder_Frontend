@@ -1,6 +1,10 @@
 const config = {
   apiUrl: "https://villa-finder-backend.onrender.com",
-  // Add other configuration variables here
+  endpoints: {
+    health: "/api/health",
+    users: "/api/users",
+    villas: "/api/villas",
+  },
 };
 
 export default config;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import config from "../config";
 
 const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
@@ -7,19 +7,50 @@ const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isBackendAvailable, setIsBackendAvailable] = useState(true);
+
+  // Check if backend is available
+  useEffect(() => {
+    const checkBackendStatus = async () => {
+      try {
+        const response = await fetch(config.apiUrl);
+        if (!response.ok) {
+          setIsBackendAvailable(false);
+          setError(
+            "Backend service is currently unavailable. Please try again in a few minutes."
+          );
+        } else {
+          setIsBackendAvailable(true);
+        }
+      } catch (err) {
+        console.error("Backend check failed:", err);
+        setIsBackendAvailable(false);
+        setError(
+          "Cannot connect to the server. Please try again in a few minutes."
+        );
+      }
+    };
+
+    if (isOpen) {
+      checkBackendStatus();
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isBackendAvailable) {
+      setError("Backend service is not available. Please try again later.");
+      return;
+    }
+
     setError("");
     setLoading(true);
 
     try {
       const endpoint = isSignUp ? "register" : "login";
-      const url = `${config.apiUrl}/api/users/${endpoint}`;
+      const url = `${config.apiUrl}${config.endpoints.users}/${endpoint}`;
 
-      // Log the request details
       console.log("Making request to:", url);
-      console.log("With data:", { email, password });
 
       const response = await fetch(url, {
         method: "POST",
@@ -27,22 +58,31 @@ const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
       });
 
-      // Log response details
       console.log("Response status:", response.status);
-      console.log("Response headers:", Object.fromEntries(response.headers));
 
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error("Backend service not found. Please try again later.");
-        }
         const errorData = await response.text();
         console.error("Error response:", errorData);
-        throw new Error(
-          "Authentication failed. Please check your credentials and try again."
-        );
+
+        if (response.status === 404) {
+          throw new Error(
+            "Backend service is starting up. Please try again in a few moments."
+          );
+        } else if (response.status === 400) {
+          throw new Error(errorData || "Invalid email or password format.");
+        } else if (response.status === 401) {
+          throw new Error(
+            "Invalid credentials. Please check your email and password."
+          );
+        } else {
+          throw new Error("Authentication failed. Please try again.");
+        }
       }
 
       const data = await response.json();
@@ -51,10 +91,7 @@ const SignIn = ({ isOpen, onClose, onSignIn, darkMode }) => {
         throw new Error("Invalid response from server");
       }
 
-      // Store the token
       localStorage.setItem("userToken", data.token);
-
-      // Call onSignIn with user data
       onSignIn(data);
       onClose();
     } catch (err) {

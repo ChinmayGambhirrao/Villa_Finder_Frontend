@@ -16,12 +16,11 @@ const VillaList = ({
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
+  const [searchFilters, setSearchFilters] = useState({
     location: "",
     minPrice: "",
     maxPrice: "",
   });
-  const [searchFilters, setSearchFilters] = useState(filters);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [selectedVilla, setSelectedVilla] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -52,19 +51,43 @@ const VillaList = ({
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters((prev) => ({
+    setSearchFilters((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
-  const handleSearch = () => {
-    setSearchFilters(filters);
-  };
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSearch();
+    try {
+      const queryParams = new URLSearchParams();
+      if (searchFilters.location) {
+        queryParams.append("location", searchFilters.location);
+      }
+      if (searchFilters.minPrice) {
+        queryParams.append("minPrice", searchFilters.minPrice);
+      }
+      if (searchFilters.maxPrice) {
+        queryParams.append("maxPrice", searchFilters.maxPrice);
+      }
+
+      const response = await fetch(
+        `${config.apiUrl}/api/villas?${queryParams}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch villas");
+      }
+      const data = await response.json();
+      setVillas(data);
+    } catch (error) {
+      console.error("Error fetching villas:", error);
+      setError("Failed to fetch villas. Please try again later.");
+    } finally {
+      setLoading(false);
+      setInitialLoad(false);
     }
   };
 
@@ -124,8 +147,11 @@ const VillaList = ({
         >
           Find Your Dream Villa
         </h2>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div>
+        <form
+          onSubmit={handleSearch}
+          className="space-y-4 md:space-y-0 md:flex md:gap-4"
+        >
+          <div className="flex-1">
             <label
               className={`block text-sm font-medium ${
                 darkMode ? "text-gray-300" : "text-gray-700"
@@ -137,7 +163,7 @@ const VillaList = ({
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg
                   className={`h-5 w-5 ${
-                    darkMode ? "text-gray-500" : "text-gray-400"
+                    darkMode ? "text-gray-400" : "text-gray-500"
                   }`}
                   viewBox="0 0 20 20"
                   fill="currentColor"
@@ -152,19 +178,18 @@ const VillaList = ({
               <input
                 type="text"
                 name="location"
-                value={filters.location}
+                value={searchFilters.location}
                 onChange={handleFilterChange}
-                onKeyPress={handleKeyPress}
-                className={`w-full pl-10 px-4 py-2 border ${
+                placeholder="Mumbai, Delhi, Goa..."
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   darkMode
                     ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     : "border-gray-300 placeholder-gray-500"
-                } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                placeholder="Mumbai, Delhi, Goa..."
+                }`}
               />
             </div>
           </div>
-          <div>
+          <div className="flex-1">
             <label
               className={`block text-sm font-medium ${
                 darkMode ? "text-gray-300" : "text-gray-700"
@@ -175,7 +200,9 @@ const VillaList = ({
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span
-                  className={`${darkMode ? "text-gray-500" : "text-gray-400"}`}
+                  className={`text-lg ${
+                    darkMode ? "text-gray-400" : "text-gray-500"
+                  }`}
                 >
                   ₹
                 </span>
@@ -183,19 +210,19 @@ const VillaList = ({
               <input
                 type="number"
                 name="minPrice"
-                value={filters.minPrice}
+                value={searchFilters.minPrice}
                 onChange={handleFilterChange}
-                onKeyPress={handleKeyPress}
-                className={`w-full pl-10 px-4 py-2 border ${
+                placeholder="Minimum budget"
+                min="0"
+                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   darkMode
                     ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     : "border-gray-300 placeholder-gray-500"
-                } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                placeholder="Minimum budget"
+                }`}
               />
             </div>
           </div>
-          <div>
+          <div className="flex-1">
             <label
               className={`block text-sm font-medium ${
                 darkMode ? "text-gray-300" : "text-gray-700"
@@ -206,7 +233,9 @@ const VillaList = ({
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span
-                  className={`${darkMode ? "text-gray-500" : "text-gray-400"}`}
+                  className={`text-lg ${
+                    darkMode ? "text-gray-400" : "text-gray-500"
+                  }`}
                 >
                   ₹
                 </span>
@@ -214,43 +243,67 @@ const VillaList = ({
               <input
                 type="number"
                 name="maxPrice"
-                value={filters.maxPrice}
+                value={searchFilters.maxPrice}
                 onChange={handleFilterChange}
-                onKeyPress={handleKeyPress}
-                className={`w-full pl-10 px-4 py-2 border ${
+                placeholder="Maximum budget"
+                min="0"
+                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   darkMode
                     ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                     : "border-gray-300 placeholder-gray-500"
-                } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
-                placeholder="Maximum budget"
+                }`}
               />
             </div>
           </div>
-        </div>
-        <div className="flex justify-end">
-          <button
-            onClick={handleSearch}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <div className="flex items-center">
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              Search Villas
-            </div>
-          </button>
-        </div>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center"
+            >
+              {loading ? (
+                <span className="flex items-center">
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Searching...
+                </span>
+              ) : (
+                <>
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Search Villas
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Status Messages */}
@@ -320,7 +373,8 @@ const VillaList = ({
               <>
                 Found{" "}
                 <span className="text-blue-600 font-bold">{villas.length}</span>{" "}
-                luxury villas {filters.location && `in ${filters.location}`}
+                luxury villas{" "}
+                {searchFilters.location && `in ${searchFilters.location}`}
               </>
             ) : (
               "No villas match your search criteria"
