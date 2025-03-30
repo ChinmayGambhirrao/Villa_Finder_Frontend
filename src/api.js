@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "https://localhost:5000"; // Our backend url
+const API_URL = "https://villa-finder-backend.onrender.com"; // Our backend url
 
 // Function to get villas from backend
 export const getVillas = async () => {
